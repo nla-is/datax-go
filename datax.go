@@ -10,6 +10,8 @@ import (
 	"os"
 )
 
+const MaxMessageSize = 32 * 1024 * 1024
+
 type DataX struct {
 	clientConn *grpc.ClientConn
 	sdkClient  sdkprotocolv1.DataXClient
@@ -21,7 +23,12 @@ func New() (*DataX, error) {
 	if sidecarAddress == "" {
 		sidecarAddress = "127.0.0.1:20001"
 	}
-	clientConn, err := grpc.Dial(sidecarAddress, grpc.WithInsecure(), grpc.WithBlock())
+	clientConn, err := grpc.Dial(sidecarAddress,
+		grpc.WithInsecure(),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxMessageSize)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(MaxMessageSize)),
+	)
 	if err != nil {
 		return nil, err
 	}
