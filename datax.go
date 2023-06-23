@@ -88,7 +88,7 @@ func (dx *DataX) emit(request *sdkprotocolv1.EmitMessage) error {
 func (dx *DataX) EmitRawWithReference(data []byte, reference string) error {
 	return dx.emit(&sdkprotocolv1.EmitMessage{
 		Data:      data,
-		Reference: &reference,
+		Reference: reference,
 	})
 }
 

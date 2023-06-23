@@ -3,7 +3,7 @@ module github.com/nla-is/datax-go
 go 1.19
 
 require (
-	github.com/nla-is/datax-sdk-protocol v0.0.0-20230309140626-6e81e033cace
+	github.com/nla-is/datax-sdk-protocol v1.0.0
 	github.com/sevlyar/retag v0.0.0-20190429052747-c3f10e304082
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	google.golang.org/grpc v1.53.0
