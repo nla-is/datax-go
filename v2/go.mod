@@ -1,4 +1,4 @@
-module nj-gitlab.nec-labs.com/gco/datax-go/v2
+module github.com/nla-is/datax-go/v2
 
 go 1.21.1
 
