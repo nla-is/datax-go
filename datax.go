@@ -27,7 +27,7 @@ func libraryName() string {
 	case "darwin":
 		return "libdatax-sdk.dylib"
 	case "linux":
-		return "lidatax-sdk.so"
+		return "libdatax-sdk.so"
 	default:
 		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
 	}
@@ -51,6 +51,8 @@ func New() (*DataX, error) {
 	purego.RegisterLibFunc(&dx.messageData, sdkHandle, "datax_sdk_v3_message_data")
 	purego.RegisterLibFunc(&dx.messageDataSize, sdkHandle, "datax_sdk_v3_message_data_size")
 
+	dx.initialize()
+
 	return dx, nil
 }
 
@@ -70,7 +72,18 @@ func (dx *DataX) Configuration(cfg interface{}) error {
 }
 
 func (dx *DataX) Next(msg interface{}) (stream, reference string, err error) {
-	panic("not implemented")
+	handle := dx.next()
+	stream = dx.messageStream(handle)
+	reference = dx.messageReference(handle)
+	dataSize := dx.messageDataSize(handle)
+	dataPtr := dx.messageData(handle)
+	data := unsafe.Slice((*byte)(dataPtr), dataSize)
+	err = cbor.Unmarshal(data, msg)
+	if err != nil {
+		err = fmt.Errorf("%w decoding input message")
+	}
+	dx.messageClose(handle)
+	return
 }
 
 func (dx *DataX) Emit(msg interface{}, reference ...string) error {
