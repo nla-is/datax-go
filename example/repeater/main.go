@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/nla-is/datax-go"
+	"github.com/nla-is/datax-go/v2"
 	"log"
 )
 

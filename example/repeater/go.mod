@@ -1,8 +1,8 @@
 module repeater
 
-go 1.19
+go 1.21.1
 
-require github.com/nla-is/datax-go v1.0.1-0.20231019195008-603c8b646f24
+require github.com/nla-is/datax-go/v2 v2.0.0-alpha.1.0.20231019205259-a50c64bbaf3c
 
 require (
 	github.com/ebitengine/purego v0.5.0 // indirect
