@@ -1,52 +1,60 @@
 package datax
 
 import (
-	"context"
 	"encoding/json"
-	sdkprotocolv1 "github.com/nla-is/datax-sdk-protocol/v1"
-	"github.com/sevlyar/retag"
-	"github.com/vmihailenco/msgpack/v5"
-	"google.golang.org/grpc"
+	"fmt"
+	"github.com/ebitengine/purego"
+	"github.com/fxamacker/cbor/v2"
 	"os"
+	"runtime"
+	"unsafe"
 )
 
-const MaxMessageSize = 32 * 1024 * 1024
-
 type DataX struct {
-	clientConn *grpc.ClientConn
-	sdkClient  sdkprotocolv1.DataXClient
-	tagger     *tagger
+	initialize func()
+	next       func() uintptr
+	emit       func(unsafe.Pointer, int32, string)
+
+	messageClose     func(uintptr)
+	messageReference func(uintptr) string
+	messageStream    func(uintptr) string
+	messageData      func(uintptr) unsafe.Pointer
+	messageDataSize  func(uintptr) int32
+}
+
+func libraryName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "libdatax-sdk.dylib"
+	case "linux":
+		return "lidatax-sdk.so"
+	default:
+		panic(fmt.Errorf("GOOS=%s is not supported", runtime.GOOS))
+	}
 }
 
 func New() (*DataX, error) {
-	sidecarAddress := os.Getenv("DATAX_SIDECAR_ADDRESS")
-	if sidecarAddress == "" {
-		sidecarAddress = "127.0.0.1:20001"
-	}
-	clientConn, err := grpc.Dial(sidecarAddress,
-		grpc.WithInsecure(),
-		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(MaxMessageSize)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(MaxMessageSize)),
-	)
+	library := libraryName()
+	sdkHandle, err := purego.Dlopen(library, purego.RTLD_LOCAL|purego.RTLD_LAZY)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w loading %s", err, library)
 	}
-	sdkClient := sdkprotocolv1.NewDataXClient(clientConn)
 
-	dx := &DataX{
-		clientConn: clientConn,
-		sdkClient:  sdkClient,
-		tagger:     newTagger(),
-	}
+	dx := &DataX{}
+
+	purego.RegisterLibFunc(&dx.initialize, sdkHandle, "datax_sdk_v3_initialize")
+	purego.RegisterLibFunc(&dx.next, sdkHandle, "datax_sdk_v3_next")
+	purego.RegisterLibFunc(&dx.emit, sdkHandle, "datax_sdk_v3_emit")
+	purego.RegisterLibFunc(&dx.messageClose, sdkHandle, "datax_sdk_v3_message_close")
+	purego.RegisterLibFunc(&dx.messageReference, sdkHandle, "datax_sdk_v3_message_reference")
+	purego.RegisterLibFunc(&dx.messageStream, sdkHandle, "datax_sdk_v3_message_stream")
+	purego.RegisterLibFunc(&dx.messageData, sdkHandle, "datax_sdk_v3_message_data")
+	purego.RegisterLibFunc(&dx.messageDataSize, sdkHandle, "datax_sdk_v3_message_data_size")
 
 	return dx, nil
 }
 
 func (dx *DataX) Close() {
-	if dx.clientConn != nil {
-		_ = dx.clientConn.Close()
-	}
 }
 
 func (dx *DataX) Configuration(cfg interface{}) error {
@@ -61,60 +69,25 @@ func (dx *DataX) Configuration(cfg interface{}) error {
 	return json.Unmarshal(data, cfg)
 }
 
-func (dx *DataX) NextRaw() (stream, reference string, data []byte, err error) {
-	response, err := dx.sdkClient.Next(context.Background(), &sdkprotocolv1.NextOptions{})
-	if err != nil {
-		return "", "", nil, err
-	}
-	return response.Stream, response.Reference, response.Data, nil
-}
-
 func (dx *DataX) Next(msg interface{}) (stream, reference string, err error) {
-	var data []byte
-	if stream, reference, data, err = dx.NextRaw(); err != nil {
-		return "", "", err
+	panic("not implemented")
+}
+
+func (dx *DataX) Emit(msg interface{}, reference ...string) error {
+	ref := ""
+	if len(reference) > 0 {
+		ref = reference[0]
 	}
-	if err = msgpack.Unmarshal(data, msg); err != nil {
-		return "", "", err
-	}
-	return stream, reference, nil
-}
-
-func (dx *DataX) emit(request *sdkprotocolv1.EmitMessage) error {
-	_, err := dx.sdkClient.Emit(context.Background(), request)
-	return err
-}
-
-func (dx *DataX) EmitRawWithReference(data []byte, reference string) error {
-	return dx.emit(&sdkprotocolv1.EmitMessage{
-		Data:      data,
-		Reference: reference,
-	})
-}
-
-func (dx *DataX) EmitRaw(data []byte) error {
-	return dx.emit(&sdkprotocolv1.EmitMessage{
-		Data: data,
-	})
-}
-
-func (dx *DataX) encode(msg interface{}) ([]byte, error) {
-	dxMsg := retag.ConvertAny(msg, dx.tagger)
-	return msgpack.Marshal(dxMsg)
-}
-
-func (dx *DataX) Emit(msg interface{}) error {
-	data, err := dx.encode(msg)
+	data, err := cbor.Marshal(msg)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w marshaling message data", err)
 	}
-	return dx.EmitRaw(data)
+	dx.emit(unsafe.Pointer(&data[0]), int32(len(data)), ref)
+	return nil
 }
 
-func (dx *DataX) EmitWithReference(msg interface{}, stream string) error {
-	data, err := dx.encode(msg)
-	if err != nil {
-		return err
-	}
-	return dx.EmitRawWithReference(data, stream)
+// EmitWithReference
+// Deprecated, use Emit()
+func (dx *DataX) EmitWithReference(msg interface{}, reference string) error {
+	return dx.Emit(msg, reference)
 }
