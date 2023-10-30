@@ -42,14 +42,14 @@ func New() (*DataX, error) {
 
 	dx := &DataX{}
 
-	purego.RegisterLibFunc(&dx.initialize, sdkHandle, "datax_sdk_v3_initialize")
-	purego.RegisterLibFunc(&dx.next, sdkHandle, "datax_sdk_v3_next")
-	purego.RegisterLibFunc(&dx.emit, sdkHandle, "datax_sdk_v3_emit")
-	purego.RegisterLibFunc(&dx.messageClose, sdkHandle, "datax_sdk_v3_message_close")
-	purego.RegisterLibFunc(&dx.messageReference, sdkHandle, "datax_sdk_v3_message_reference")
-	purego.RegisterLibFunc(&dx.messageStream, sdkHandle, "datax_sdk_v3_message_stream")
-	purego.RegisterLibFunc(&dx.messageData, sdkHandle, "datax_sdk_v3_message_data")
-	purego.RegisterLibFunc(&dx.messageDataSize, sdkHandle, "datax_sdk_v3_message_data_size")
+	purego.RegisterLibFunc(&dx.initialize, sdkHandle, "datax_sdk_v2_initialize")
+	purego.RegisterLibFunc(&dx.next, sdkHandle, "datax_sdk_v2_next")
+	purego.RegisterLibFunc(&dx.emit, sdkHandle, "datax_sdk_v2_emit")
+	purego.RegisterLibFunc(&dx.messageClose, sdkHandle, "datax_sdk_v2_message_close")
+	purego.RegisterLibFunc(&dx.messageReference, sdkHandle, "datax_sdk_v2_message_reference")
+	purego.RegisterLibFunc(&dx.messageStream, sdkHandle, "datax_sdk_v2_message_stream")
+	purego.RegisterLibFunc(&dx.messageData, sdkHandle, "datax_sdk_v2_message_data")
+	purego.RegisterLibFunc(&dx.messageDataSize, sdkHandle, "datax_sdk_v2_message_data_size")
 
 	dx.initialize()
 
@@ -80,7 +80,7 @@ func (dx *DataX) Next(msg interface{}) (stream, reference string, err error) {
 	data := unsafe.Slice((*byte)(dataPtr), dataSize)
 	err = cbor.Unmarshal(data, msg)
 	if err != nil {
-		err = fmt.Errorf("%w decoding input message")
+		err = fmt.Errorf("%w decoding input message", err)
 	}
 	dx.messageClose(handle)
 	return
