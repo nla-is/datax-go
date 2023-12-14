@@ -93,9 +93,10 @@ func (dx *DataX) NextRaw() (stream, reference string, data []byte, err error) {
 	dataSize := dx.messageDataSize(handle)
 	dataPtr := dx.messageData(handle)
 	unsafeData := unsafe.Slice((*byte)(dataPtr), dataSize)
-	data := make([]byte, len(unsafeData))
+	data = make([]byte, len(unsafeData))
 	copy(data, unsafeData)
 	dx.messageClose(handle)
+	return
 }
 
 func (dx *DataX) EmitRaw(rawMsg []byte, reference ...string) error {
@@ -103,7 +104,7 @@ func (dx *DataX) EmitRaw(rawMsg []byte, reference ...string) error {
 	if len(reference) > 0 {
 		ref = reference[0]
 	}
-	dx.emit(unsafe.Pointer(&rawMsg[0]), int32(len(data)), ref)
+	dx.emit(unsafe.Pointer(&rawMsg[0]), int32(len(rawMsg)), ref)
 	return nil
 }
 
