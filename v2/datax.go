@@ -86,6 +86,27 @@ func (dx *DataX) Next(msg interface{}) (stream, reference string, err error) {
 	return
 }
 
+func (dx *DataX) NextRaw() (stream, reference string, data []byte, err error) {
+	handle := dx.next()
+	stream = dx.messageStream(handle)
+	reference = dx.messageReference(handle)
+	dataSize := dx.messageDataSize(handle)
+	dataPtr := dx.messageData(handle)
+	unsafeData := unsafe.Slice((*byte)(dataPtr), dataSize)
+	data := make([]byte, len(unsafeData))
+	copy(data, unsafeData)
+	dx.messageClose(handle)
+}
+
+func (dx *DataX) EmitRaw(rawMsg []byte, reference ...string) error {
+	ref := ""
+	if len(reference) > 0 {
+		ref = reference[0]
+	}
+	dx.emit(unsafe.Pointer(&rawMsg[0]), int32(len(data)), ref)
+	return nil
+}
+
 func (dx *DataX) Emit(msg interface{}, reference ...string) error {
 	ref := ""
 	if len(reference) > 0 {
