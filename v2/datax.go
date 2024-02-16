@@ -25,7 +25,7 @@ type DataX struct {
 func libraryName() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "libdatax-sdk.dylib"
+		return "libdatax-sdk.so"
 	case "linux":
 		return "libdatax-sdk.so"
 	default:
